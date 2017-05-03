@@ -7,7 +7,7 @@
 
 //function declarations
 unsigned int getmax(unsigned int *, unsigned int);
-__global__ void get_max(unsigned int *num);
+__global__ void get_max(unsigned int *num, unsigned int size);
 
 int main(int argc, char *argv[])
 {
@@ -47,22 +47,24 @@ int main(int argc, char *argv[])
     //sequential
     printf(" The maximum number in the array is: %u\n", getmax(numbers, size));
     //parallel
-    get_max<<<NUM_BLOCKS, THREADS_PER_BLOCK>>>(d_numbers);
+    get_max<<<NUM_BLOCKS, THREADS_PER_BLOCK>>>(d_numbers, size);
     cudaMemcpy(numbers, d_numbers, size * sizeof(unsigned int), cudaMemcpyDeviceToHost);
     for( i = 0; i < size; i++){
-      printf("element in %d: %u\n", i, d_numbers[i]);
+      if(numbers[i] > numbers[0]){
+        printf("element in %d: %u\n", i, numbers[i]);
+      }
     }
-     printf("The max integer in the array is: %d\n", d_numbers[0]);
+     printf("The max integer in the array is: %d\n", numbers[0]);
     //free device matrices
     cudaFree(d_numbers);
     free(numbers);
     exit(0);
 }
 
-__global__ void get_max(unsigned int* num){
+__global__ void get_max(unsigned int* num, unsigned int size){
   unsigned int temp;
   unsigned int index = threadIdx.x + (blockDim.x * blockIdx.x);
-  unsigned int nTotalThreads = 10;
+  unsigned int nTotalThreads = size;
 
   while(nTotalThreads > 1){
     unsigned int halfPoint = nTotalThreads / 2;	// divide by two
