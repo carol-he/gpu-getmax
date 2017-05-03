@@ -65,20 +65,32 @@ __global__ void get_max(unsigned int* num, unsigned int size){
   unsigned int temp;
   unsigned int index = threadIdx.x + (blockDim.x * blockIdx.x);
   unsigned int nTotalThreads = size;
+  unsigned int i = 0;
 
   while(nTotalThreads > 1){
-    unsigned int halfPoint = nTotalThreads / 2;	// divide by two
+    unsigned int tenPoint = nTotalThreads / 10;	// divide by ten
     // only the first half of the threads will be active.
+
+    if(index < tenPoint){
+      for(i = 1; i < 10; i++){
+        temp = num[index + tenPoint*i];
+        //compare to "0" index
+        if(temp > num[index]){
+          num[index] = temp;
+        }
+      }
+    }
+    /*
     if (index < halfPoint){
       temp = num[ index + halfPoint ];
       if (temp > num[ index ]) {
         num[index] = temp;
       }
-    }
+    }*/
     __syncthreads();
 
 
-    nTotalThreads = nTotalThreads / 2;	// divide by two.
+    nTotalThreads = (nTotalThreads / 10) * 9;	// divide by two.
   }
 }
 
