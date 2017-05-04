@@ -39,26 +39,21 @@ int main(int argc, char *argv[])
     for( i = 0; i < size; i++){
       numbers[i] = rand()  % size;
     }
-    printf("elem in arr[0]: %d", numbers[0]);
     //create device pointers
     unsigned int *d_numbers;
     //transfer array to device memory
     cudaMalloc((void**) &d_numbers, size * sizeof(unsigned int));
     cudaMemcpy(d_numbers, numbers, size * sizeof(unsigned int), cudaMemcpyHostToDevice);
     //sequential
-    // printf(" The maximum number in the array is: %u\n", getmax(numbers, size));
-    //parallel kernel call
-    unsigned int sizea = size;
-    while(sizea > 1){
-      get_max<<<NUM_BLOCKS, THREADS_PER_BLOCK>>>(d_numbers, sizea);
-      sizea = (sizea) / 10;
-    }
+    printf(" The maximum number in the array is: %u\n", getmax(numbers, size));
+    //parallel
+    get_max<<<NUM_BLOCKS, THREADS_PER_BLOCK>>>(d_numbers, size);
     cudaMemcpy(numbers, d_numbers, size * sizeof(unsigned int), cudaMemcpyDeviceToHost);
-    // for( i = 0; i < size; i++){
-    //   if(numbers[i] > numbers[0]){
-    //     printf("element in %d: %u\n", i, numbers[i]);
-    //   }
-    // }
+    for( i = 0; i < size; i++){
+      if(numbers[i] > numbers[0]){
+        printf("element in %d: %u\n", i, numbers[i]);
+      }
+    }
      printf("The max integer in the array is: %d\n", numbers[0]);
     //free device matrices
     cudaFree(d_numbers);
@@ -68,38 +63,23 @@ int main(int argc, char *argv[])
 
 __global__ void get_max(unsigned int* num, unsigned int size){
   unsigned int temp;
-  //threadIdx = thread # (within each block)
-  //blockDim = block dimensions counted as # of threads (or # threads per block)
-  //blockId = block # (index within a grid)
   unsigned int index = threadIdx.x + (blockDim.x * blockIdx.x);
   unsigned int nTotalThreads = size;
-  unsigned int i = 0;
 
-    unsigned int tenPoint = nTotalThreads / 10;	// divide by ten
+  while(nTotalThreads > 1){
+    unsigned int halfPoint = nTotalThreads / 2;	// divide by two
     // only the first half of the threads will be active.
-
-    if(index < tenPoint){
-      for(i = 1; i < 10; i++){
-        temp = num[index + tenPoint*i];
-        //compare to "0" index
-        if(temp > num[index]){
-          num[index] = temp;
-          //__syncthreads();
-        }
-      }
-      //__syncthreads();
-    }
-    /*
     if (index < halfPoint){
       temp = num[ index + halfPoint ];
       if (temp > num[ index ]) {
         num[index] = temp;
       }
-    }*/
-    //apparently dont need this
-    //__syncthreads();
+    }
+    __syncthreads();
 
 
+    nTotalThreads = nTotalThreads / 2;	// divide by two.
+  }
 }
 
 /*

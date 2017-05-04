@@ -1,2 +1,5 @@
 maxgpu2.cu
 maxgpu3.cu
+maxgpu-seq.cu
+maxgpu-noloop.cu
+pls.cu
