@@ -7,25 +7,18 @@
 
 //function declarations
 unsigned int getmax(unsigned int *, unsigned int);
-__global__ void get_max(unsigned int *num, unsigned int size);
+__global__ void getmaxcu(unsigned int *num, unsigned int size);
 
 int main(int argc, char *argv[])
 {
     unsigned int size = 0;  // The size of the array
     unsigned int i;  // loop index
     unsigned int * numbers; //pointer to the array
-
-    if(argc !=2)
-    {
-       printf("usage: maxseq num\n");
-       printf("num = size of the array\n");
-       exit(1);
-    }
     //size is number of threads total
     size = atol(argv[1]);
 
     //calculates number of blocks
-    unsigned int NUM_BLOCKS = size/THREADS_PER_BLOCK;
+    unsigned int NUM_BLOCKS = (size + THREADS_PER_BLOCK - 1)/THREADS_PER_BLOCK;
 
     numbers = (unsigned int *)malloc(size * sizeof(unsigned int));
     if( !numbers )
@@ -33,32 +26,25 @@ int main(int argc, char *argv[])
        printf("Unable to allocate mem for an array of size %u\n", size);
        exit(1);
     }
-
     srand(time(NULL)); // setting a seed for the random number generator
     // Fill-up the array with random numbers from 0 to size-1
     for( i = 0; i < size; i++){
       numbers[i] = rand()  % size;
     }
-    printf("elem in arr[0]: %d", numbers[0]);
     //create device pointers
     unsigned int *d_numbers;
     //transfer array to device memory
     cudaMalloc((void**) &d_numbers, size * sizeof(unsigned int));
     cudaMemcpy(d_numbers, numbers, size * sizeof(unsigned int), cudaMemcpyHostToDevice);
     //sequential
-    // printf(" The maximum number in the array is: %u\n", getmax(numbers, size));
+    //printf(" The maximum number in the array is: %u\n", getmax(numbers, size));
     //parallel kernel call
     unsigned int sizea = size;
     while(sizea > 1){
-      get_max<<<NUM_BLOCKS, THREADS_PER_BLOCK>>>(d_numbers, sizea);
+      getmaxcu<<<NUM_BLOCKS, THREADS_PER_BLOCK>>>(d_numbers, sizea);
       sizea = (sizea) / 10;
     }
     cudaMemcpy(numbers, d_numbers, size * sizeof(unsigned int), cudaMemcpyDeviceToHost);
-    // for( i = 0; i < size; i++){
-    //   if(numbers[i] > numbers[0]){
-    //     printf("element in %d: %u\n", i, numbers[i]);
-    //   }
-    // }
      printf("The max integer in the array is: %d\n", numbers[0]);
     //free device matrices
     cudaFree(d_numbers);
@@ -66,47 +52,23 @@ int main(int argc, char *argv[])
     exit(0);
 }
 
-__global__ void get_max(unsigned int* num, unsigned int size){
+__global__ void getmaxcu(unsigned int* num, unsigned int size){
   unsigned int temp;
-  //threadIdx = thread # (within each block)
-  //blockDim = block dimensions counted as # of threads (or # threads per block)
-  //blockId = block # (index within a grid)
   unsigned int index = threadIdx.x + (blockDim.x * blockIdx.x);
   unsigned int nTotalThreads = size;
-  unsigned int i = 0;
-
+  unsigned int i;
     unsigned int tenPoint = nTotalThreads / 10;	// divide by ten
-    // only the first half of the threads will be active.
-
     if(index < tenPoint){
       for(i = 1; i < 10; i++){
         temp = num[index + tenPoint*i];
         //compare to "0" index
         if(temp > num[index]){
           num[index] = temp;
-          //__syncthreads();
         }
       }
-      //__syncthreads();
     }
-    /*
-    if (index < halfPoint){
-      temp = num[ index + halfPoint ];
-      if (temp > num[ index ]) {
-        num[index] = temp;
-      }
-    }*/
-    //apparently dont need this
-    //__syncthreads();
-
-
 }
 
-/*
-   input: pointer to an array of long int
-          number of elements in the array
-   output: the maximum number of the array
-*/
 unsigned int getmax(unsigned int num[], unsigned int size)
 {
   unsigned int i;
